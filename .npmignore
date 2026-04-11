@@ -1,0 +1,10 @@
+.node-x64/
+node_modules/
+scripts/
+example.js
+run.sh
+test.jpg
+capture.jpg
+*.jpg
+.gitignore
+.git/
