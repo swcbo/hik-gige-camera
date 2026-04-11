@@ -1,9 +1,9 @@
 export interface HikCameraOptions {
   /** Camera IP address (default: auto-detect first GigE device) */
   ip?: string;
-  /** Exposure time in microseconds (default: 5000) */
+  /** Exposure time in microseconds (default: 200000) */
   exposure?: number;
-  /** Gain in dB (default: 2.0) */
+  /** Gain in dB (default: 10.0) */
   gain?: number;
   /** White balance mode: 'off' | 'once' | 'continuous' (default: 'continuous') */
   whiteBalance?: 'off' | 'once' | 'continuous';

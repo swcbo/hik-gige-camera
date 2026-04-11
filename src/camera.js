@@ -3,11 +3,11 @@
  * @module camera
  */
 
-const { performance } = require('node:perf_hooks');
-const koffi = require('koffi');
-const fs = require('fs').promises;
-const sdk = require('./sdk-binding');
-const C = require('./constants');
+const { performance } = require("node:perf_hooks");
+const koffi = require("koffi");
+const fs = require("fs").promises;
+const sdk = require("./sdk-binding");
+const C = require("./constants");
 
 /** Raw frame buffer (~64MB) for max sensor sizes (e.g. 5472×3648×3). */
 const FRAME_BUF_BYTES = 64 * 1024 * 1024;
@@ -17,13 +17,13 @@ const JPEG_BUF_BYTES = 32 * 1024 * 1024;
 
 /** @type {Map<number, string>} Common GVSP pixel types for logs */
 const PIXEL_LABELS = new Map([
-  [0x01080001, 'Mono8'],
-  [0x01080008, 'BayerGR8'],
-  [0x01080009, 'BayerRG8'],
-  [0x0108000a, 'BayerGB8'],
-  [0x0108000b, 'BayerBG8'],
-  [0x02180014, 'RGB8'],
-  [0x02180015, 'BGR8'],
+  [0x01080001, "Mono8"],
+  [0x01080008, "BayerGR8"],
+  [0x01080009, "BayerRG8"],
+  [0x0108000a, "BayerGB8"],
+  [0x0108000b, "BayerBG8"],
+  [0x02180014, "RGB8"],
+  [0x02180015, "BGR8"],
 ]);
 
 /**
@@ -52,11 +52,11 @@ function formatBytes(n) {
  */
 function whiteBalanceModeToEnum(mode) {
   const m = String(mode).trim().toLowerCase();
-  if (m === 'off') return C.MV_BALANCEWHITE_AUTO_OFF;
-  if (m === 'once') return C.MV_BALANCEWHITE_AUTO_ONCE;
-  if (m === 'continuous') return C.MV_BALANCEWHITE_AUTO_CONTINUOUS;
+  if (m === "off") return C.MV_BALANCEWHITE_AUTO_OFF;
+  if (m === "once") return C.MV_BALANCEWHITE_AUTO_ONCE;
+  if (m === "continuous") return C.MV_BALANCEWHITE_AUTO_CONTINUOUS;
   throw new Error(
-    `Invalid whiteBalance mode: ${mode} (expected 'off', 'once', or 'continuous')`
+    `Invalid whiteBalance mode: ${mode} (expected 'off', 'once', or 'continuous')`,
   );
 }
 
@@ -68,7 +68,7 @@ function whiteBalanceModeToEnum(mode) {
 function assertMvOk(ret, operation) {
   const code = ret | 0;
   if (code === (C.MV_OK | 0)) return;
-  const hex = (code >>> 0).toString(16).toUpperCase().padStart(8, '0');
+  const hex = (code >>> 0).toString(16).toUpperCase().padStart(8, "0");
   const err = new Error(`MVS SDK error in ${operation}: 0x${hex} (${code})`);
   err.code = code >>> 0;
   throw err;
@@ -80,7 +80,7 @@ function assertMvOk(ret, operation) {
  * @returns {number}
  */
 function ipToUint32(ip) {
-  const parts = String(ip).trim().split('.');
+  const parts = String(ip).trim().split(".");
   if (parts.length !== 4) {
     throw new Error(`Invalid IPv4 string: ${ip}`);
   }
@@ -97,8 +97,8 @@ function ipToUint32(ip) {
 /**
  * @typedef {Object} HikGigECameraOptions
  * @property {string} [ip] Camera IPv4; omit to use the first GigE device.
- * @property {number} [exposure=5000] Exposure time (µs).
- * @property {number} [gain=2.0] Analog gain (dB).
+ * @property {number} [exposure=200000] Exposure time (µs).
+ * @property {number} [gain=10.0] Analog gain (dB).
  * @property {'off'|'once'|'continuous'} [whiteBalance='continuous'] Auto white balance mode.
  * @property {(msg: string) => void} [logger] Log sink; default silent.
  * @property {number} [jpegQuality=90] JPEG quality 1–100.
@@ -116,13 +116,15 @@ class HikGigECamera {
     /** @type {Required<Pick<HikGigECameraOptions, 'exposure'|'gain'|'whiteBalance'|'jpegQuality'>> & { ip?: string }} */
     this._options = {
       ip: options.ip,
-      exposure: options.exposure ?? 5000,
-      gain: options.gain ?? 2.0,
-      whiteBalance: options.whiteBalance ?? 'continuous',
-      jpegQuality: Number.isFinite(q) ? Math.min(100, Math.max(1, Math.round(q))) : 90,
+      exposure: options.exposure ?? 200000,
+      gain: options.gain ?? 10.0,
+      whiteBalance: options.whiteBalance ?? "continuous",
+      jpegQuality: Number.isFinite(q)
+        ? Math.min(100, Math.max(1, Math.round(q)))
+        : 90,
     };
     /** @type {((msg: string) => void) | null} */
-    this._logger = typeof options.logger === 'function' ? options.logger : null;
+    this._logger = typeof options.logger === "function" ? options.logger : null;
 
     /** @type {unknown} */
     this._handle = null;
@@ -164,7 +166,7 @@ class HikGigECamera {
 
   _requireHandle() {
     if (!this._handle) {
-      throw new Error('Not connected; call connect() first');
+      throw new Error("Not connected; call connect() first");
     }
   }
 
@@ -175,31 +177,31 @@ class HikGigECamera {
    */
   async connect() {
     if (this._handle) {
-      throw new Error('Already connected');
+      throw new Error("Already connected");
     }
 
     const ip = this._options.ip;
     const tConnect0 = performance.now();
 
-    this._time('connect:EnumDevices');
+    this._time("connect:EnumDevices");
     const devList = {};
     assertMvOk(
       sdk.MV_CC_EnumDevices(C.MV_GIGE_DEVICE, devList),
-      'MV_CC_EnumDevices'
+      "MV_CC_EnumDevices",
     );
     this._log(
-      `[HikCamera] connect: EnumDevices ... ${this._timeEnd('connect:EnumDevices').toFixed(0)}ms`
+      `[HikCamera] connect: EnumDevices ... ${this._timeEnd("connect:EnumDevices").toFixed(0)}ms`,
     );
 
     const n = devList.nDeviceNum | 0;
     if (n <= 0) {
       throw new Error(
-        'No GigE devices found (MV_CC_EnumDevices returned 0 devices)'
+        "No GigE devices found (MV_CC_EnumDevices returned 0 devices)",
       );
     }
 
     const wantIp =
-      ip != null && String(ip).trim() !== '' ? ipToUint32(ip) : null;
+      ip != null && String(ip).trim() !== "" ? ipToUint32(ip) : null;
 
     /** @type {unknown} */
     let chosen = null;
@@ -208,7 +210,7 @@ class HikGigECamera {
       if (p == null) continue;
 
       /** nTLayerType offset 12 (see CameraParams.h MV_CC_DEVICE_INFO) */
-      const tLayer = koffi.decode(p, 12, 'uint32') | 0;
+      const tLayer = koffi.decode(p, 12, "uint32") | 0;
       if (tLayer !== C.MV_GIGE_DEVICE) continue;
 
       if (wantIp == null) {
@@ -216,7 +218,7 @@ class HikGigECamera {
         break;
       }
       /** MV_GIGE_DEVICE_INFO.nCurrentIp at offset 8 within SpecialInfo (offset 32) → 40 */
-      const curIp = koffi.decode(p, 40, 'uint32') >>> 0;
+      const curIp = koffi.decode(p, 40, "uint32") >>> 0;
       if (curIp === wantIp) {
         chosen = p;
         break;
@@ -227,70 +229,67 @@ class HikGigECamera {
       throw new Error(
         wantIp != null
           ? `No GigE device with IP ${ip} (expected 0x${wantIp.toString(16)})`
-          : 'No suitable GigE device in list'
+          : "No suitable GigE device in list",
       );
     }
 
-    this._time('connect:CreateHandle');
+    this._time("connect:CreateHandle");
     const handleOut = [null];
-    assertMvOk(
-      sdk.MV_CC_CreateHandle(handleOut, chosen),
-      'MV_CC_CreateHandle'
-    );
+    assertMvOk(sdk.MV_CC_CreateHandle(handleOut, chosen), "MV_CC_CreateHandle");
     this._handle = handleOut[0];
     this._log(
-      `[HikCamera] connect: CreateHandle ... ${this._timeEnd('connect:CreateHandle').toFixed(0)}ms`
+      `[HikCamera] connect: CreateHandle ... ${this._timeEnd("connect:CreateHandle").toFixed(0)}ms`,
     );
 
-    this._time('connect:OpenDevice');
+    this._time("connect:OpenDevice");
     assertMvOk(
       sdk.MV_CC_OpenDevice(this._handle, C.MV_ACCESS_Exclusive, 0),
-      'MV_CC_OpenDevice'
+      "MV_CC_OpenDevice",
     );
     this._log(
-      `[HikCamera] connect: OpenDevice ... ${this._timeEnd('connect:OpenDevice').toFixed(0)}ms`
+      `[HikCamera] connect: OpenDevice ... ${this._timeEnd("connect:OpenDevice").toFixed(0)}ms`,
     );
 
-    this._time('connect:ConfigureGigE');
+    this._time("connect:ConfigureGigE");
     const pkt = sdk.MV_CC_GetOptimalPacketSize(this._handle) | 0;
     if (pkt > 0) {
       assertMvOk(
         sdk.MV_CC_SetIntValueEx(
           this._handle,
           C.FEATURE_GEV_PACKET_SIZE,
-          BigInt(pkt)
+          BigInt(pkt),
         ),
-        'MV_CC_SetIntValueEx(GevSCPSPacketSize)'
+        "MV_CC_SetIntValueEx(GevSCPSPacketSize)",
       );
     }
 
     assertMvOk(
       sdk.MV_GIGE_SetResend(this._handle, 1, 20, 300),
-      'MV_GIGE_SetResend'
+      "MV_GIGE_SetResend",
     );
     this._log(
-      `[HikCamera] connect: ConfigureGigE ... ${this._timeEnd('connect:ConfigureGigE').toFixed(0)}ms`
+      `[HikCamera] connect: ConfigureGigE ... ${this._timeEnd("connect:ConfigureGigE").toFixed(0)}ms`,
     );
 
-    this._time('connect:SetAutoOff');
+    this._time("connect:SetAutoOff");
     assertMvOk(
       sdk.MV_CC_SetEnumValue(
         this._handle,
         C.FEATURE_EXPOSURE_AUTO,
-        C.MV_EXPOSURE_AUTO_MODE_OFF
+        C.MV_EXPOSURE_AUTO_MODE_OFF,
       ),
-      'MV_CC_SetEnumValue(ExposureAuto)'
+      "MV_CC_SetEnumValue(ExposureAuto)",
     );
     assertMvOk(
       sdk.MV_CC_SetEnumValue(
         this._handle,
         C.FEATURE_GAIN_AUTO,
-        C.MV_GAIN_MODE_OFF
+        C.MV_GAIN_MODE_OFF,
       ),
-      'MV_CC_SetEnumValue(GainAuto)'
+      "MV_CC_SetEnumValue(GainAuto)",
     );
     this._log(
-      `[HikCamera] connect: SetAutoOff ... ${this._timeEnd('connect:SetAutoOff').toFixed(0)}ms`
+      `[HikCamera] connect: SetAutoOff ... ${this._timeEnd("connect:SetAutoOff").toFixed(0)}ms`,
     );
 
     await this.setExposure(this._options.exposure);
@@ -300,15 +299,15 @@ class HikGigECamera {
     this._rawBuf = Buffer.allocUnsafe(FRAME_BUF_BYTES);
     this._jpegBuf = Buffer.allocUnsafe(JPEG_BUF_BYTES);
 
-    this._time('connect:StartGrabbing');
-    assertMvOk(sdk.MV_CC_StartGrabbing(this._handle), 'MV_CC_StartGrabbing');
+    this._time("connect:StartGrabbing");
+    assertMvOk(sdk.MV_CC_StartGrabbing(this._handle), "MV_CC_StartGrabbing");
     this._grabbing = true;
     this._log(
-      `[HikCamera] connect: StartGrabbing ... ${this._timeEnd('connect:StartGrabbing').toFixed(0)}ms`
+      `[HikCamera] connect: StartGrabbing ... ${this._timeEnd("connect:StartGrabbing").toFixed(0)}ms`,
     );
 
     this._log(
-      `[HikCamera] connect: total ${(performance.now() - tConnect0).toFixed(0)}ms`
+      `[HikCamera] connect: total ${(performance.now() - tConnect0).toFixed(0)}ms`,
     );
   }
 
@@ -351,13 +350,13 @@ class HikGigECamera {
    */
   async setExposure(us) {
     this._requireHandle();
-    this._time('setExposure');
+    this._time("setExposure");
     assertMvOk(
-      sdk.MV_CC_SetFloatValue(this._handle, 'ExposureTime', us),
-      'MV_CC_SetFloatValue(ExposureTime)'
+      sdk.MV_CC_SetFloatValue(this._handle, "ExposureTime", us),
+      "MV_CC_SetFloatValue(ExposureTime)",
     );
     this._log(
-      `[HikCamera] setExposure ... ${this._timeEnd('setExposure').toFixed(0)}ms`
+      `[HikCamera] setExposure ... ${this._timeEnd("setExposure").toFixed(0)}ms`,
     );
   }
 
@@ -368,12 +367,14 @@ class HikGigECamera {
    */
   async setGain(value) {
     this._requireHandle();
-    this._time('setGain');
+    this._time("setGain");
     assertMvOk(
-      sdk.MV_CC_SetFloatValue(this._handle, 'Gain', value),
-      'MV_CC_SetFloatValue(Gain)'
+      sdk.MV_CC_SetFloatValue(this._handle, "Gain", value),
+      "MV_CC_SetFloatValue(Gain)",
     );
-    this._log(`[HikCamera] setGain ... ${this._timeEnd('setGain').toFixed(0)}ms`);
+    this._log(
+      `[HikCamera] setGain ... ${this._timeEnd("setGain").toFixed(0)}ms`,
+    );
   }
 
   /**
@@ -383,14 +384,14 @@ class HikGigECamera {
    */
   async setWhiteBalance(mode) {
     this._requireHandle();
-    this._time('setWhiteBalance');
+    this._time("setWhiteBalance");
     const v = whiteBalanceModeToEnum(mode);
     assertMvOk(
       sdk.MV_CC_SetEnumValue(this._handle, C.FEATURE_BALANCE_WHITE_AUTO, v),
-      'MV_CC_SetEnumValue(BalanceWhiteAuto)'
+      "MV_CC_SetEnumValue(BalanceWhiteAuto)",
     );
     this._log(
-      `[HikCamera] setWhiteBalance ... ${this._timeEnd('setWhiteBalance').toFixed(0)}ms`
+      `[HikCamera] setWhiteBalance ... ${this._timeEnd("setWhiteBalance").toFixed(0)}ms`,
     );
   }
 
@@ -401,7 +402,9 @@ class HikGigECamera {
   async captureBuffer() {
     this._requireHandle();
     if (!this._grabbing || !this._rawBuf || !this._jpegBuf) {
-      throw new Error('Grabbing not active; connect() failed or buffers missing');
+      throw new Error(
+        "Grabbing not active; connect() failed or buffers missing",
+      );
     }
 
     const raw = this._rawBuf;
@@ -409,19 +412,19 @@ class HikGigECamera {
     const frameInfo = {};
     const tCap0 = performance.now();
 
-    this._time('captureBuffer:GetOneFrame');
+    this._time("captureBuffer:GetOneFrame");
     assertMvOk(
       sdk.MV_CC_GetOneFrameTimeout(
         this._handle,
         raw,
         raw.length,
         frameInfo,
-        5000
+        5000,
       ),
-      'MV_CC_GetOneFrameTimeout'
+      "MV_CC_GetOneFrameTimeout",
     );
     this._log(
-      `[HikCamera] captureBuffer: GetOneFrame ... ${this._timeEnd('captureBuffer:GetOneFrame').toFixed(0)}ms`
+      `[HikCamera] captureBuffer: GetOneFrame ... ${this._timeEnd("captureBuffer:GetOneFrame").toFixed(0)}ms`,
     );
 
     const w = frameInfo.nWidth | 0;
@@ -431,12 +434,12 @@ class HikGigECamera {
 
     if (nFrameLen > raw.length) {
       throw new Error(
-        `Frame length ${nFrameLen} exceeds raw buffer (${raw.length})`
+        `Frame length ${nFrameLen} exceeds raw buffer (${raw.length})`,
       );
     }
     if (nFrameLen === 0) {
       throw new Error(
-        'MV_CC_GetOneFrameTimeout returned nFrameLen 0 (invalid frame metadata)'
+        "MV_CC_GetOneFrameTimeout returned nFrameLen 0 (invalid frame metadata)",
       );
     }
 
@@ -455,26 +458,26 @@ class HikGigECamera {
       iMethodValue: 0,
     };
 
-    this._time('captureBuffer:SaveImageJPEG');
+    this._time("captureBuffer:SaveImageJPEG");
     assertMvOk(
       sdk.MV_CC_SaveImageEx2(this._handle, saveParam),
-      'MV_CC_SaveImageEx2'
+      "MV_CC_SaveImageEx2",
     );
     this._log(
-      `[HikCamera] captureBuffer: SaveImageJPEG ... ${this._timeEnd('captureBuffer:SaveImageJPEG').toFixed(0)}ms`
+      `[HikCamera] captureBuffer: SaveImageJPEG ... ${this._timeEnd("captureBuffer:SaveImageJPEG").toFixed(0)}ms`,
     );
 
     const outLen = saveParam.nImageLen >>> 0;
     if (outLen === 0 || outLen > jpegBuf.length) {
       throw new Error(
-        `MV_CC_SaveImageEx2 produced invalid nImageLen=${outLen}`
+        `MV_CC_SaveImageEx2 produced invalid nImageLen=${outLen}`,
       );
     }
 
     const pxLabel = pixelTypeLabel(px);
     const totalMs = performance.now() - tCap0;
     this._log(
-      `[HikCamera] captureBuffer: total ${totalMs.toFixed(0)}ms (${w}x${h} ${pxLabel} → JPEG ${formatBytes(outLen)})`
+      `[HikCamera] captureBuffer: total ${totalMs.toFixed(0)}ms (${w}x${h} ${pxLabel} → JPEG ${formatBytes(outLen)})`,
     );
 
     return jpegBuf.subarray(0, outLen);
@@ -485,7 +488,7 @@ class HikGigECamera {
    */
   async captureBase64() {
     const buf = await this.captureBuffer();
-    return buf.toString('base64');
+    return buf.toString("base64");
   }
 
   /**

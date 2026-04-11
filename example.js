@@ -2,18 +2,18 @@
  * CLI example: GigE capture with configurable exposure/gain/white-balance.
  * Usage:
  *   node example.js
- *   node example.js --exposure 5000 --gain 2.0
+ *   node example.js --exposure 200000 --gain 10.0
  *   node example.js -e 200000 -g 10 -w continuous -o photo.jpg -v
  */
 
-const path = require('path');
-const { HikGigECamera } = require('./src');
+const path = require("path");
+const { HikGigECamera } = require("./src");
 
 const DEFAULTS = {
-  exposure: 5000,
-  gain: 2.0,
-  wb: 'continuous',
-  output: './capture.jpg',
+  exposure: 200000,
+  gain: 10.0,
+  wb: "continuous",
+  output: "./capture.jpg",
 };
 
 /**
@@ -30,28 +30,28 @@ function parseArgs(argv) {
       return v;
     };
 
-    if (a === '--exposure' || a === '-e') {
+    if (a === "--exposure" || a === "-e") {
       out.exposure = Number(next());
       if (!Number.isFinite(out.exposure) || out.exposure < 0) {
         throw new Error(`Invalid exposure: ${out.exposure}`);
       }
-    } else if (a === '--gain' || a === '-g') {
+    } else if (a === "--gain" || a === "-g") {
       out.gain = Number(next());
       if (!Number.isFinite(out.gain)) {
         throw new Error(`Invalid gain: ${out.gain}`);
       }
-    } else if (a === '--wb' || a === '-w') {
+    } else if (a === "--wb" || a === "-w") {
       out.wb = String(next()).toLowerCase();
-      if (!['off', 'once', 'continuous'].includes(out.wb)) {
+      if (!["off", "once", "continuous"].includes(out.wb)) {
         throw new Error(`Invalid --wb: use off | once | continuous`);
       }
-    } else if (a === '--output' || a === '-o') {
+    } else if (a === "--output" || a === "-o") {
       out.output = path.resolve(String(next()));
-    } else if (a === '--ip') {
+    } else if (a === "--ip") {
       out.ip = String(next()).trim() || undefined;
-    } else if (a === '--verbose' || a === '-v') {
+    } else if (a === "--verbose" || a === "-v") {
       out.verbose = true;
-    } else if (a === '--help' || a === '-h') {
+    } else if (a === "--help" || a === "-h") {
       console.log(`
 Hik GigE capture example
 
@@ -79,7 +79,7 @@ async function main() {
   const opts = parseArgs(process.argv);
 
   console.log(
-    `Parameters: exposure=${opts.exposure}µs gain=${opts.gain}dB wb=${opts.wb} ip=${opts.ip ?? '(auto)'}`
+    `Parameters: exposure=${opts.exposure}µs gain=${opts.gain}dB wb=${opts.wb} ip=${opts.ip ?? "(auto)"}`,
   );
 
   const camera = new HikGigECamera({
@@ -94,7 +94,7 @@ async function main() {
   await camera.captureToFile(opts.output);
   await camera.disconnect();
 
-  const fs = require('fs');
+  const fs = require("fs");
   const stat = fs.statSync(opts.output);
   console.log(`Saved ${opts.output} (${(stat.size / 1024).toFixed(0)}KB)`);
 }
