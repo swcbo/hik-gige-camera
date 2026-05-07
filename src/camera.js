@@ -137,6 +137,26 @@ class HikGigECamera {
 
     /** @type {Map<string, number>} */
     this._timeMarks = new Map();
+
+    /** 进程退出时自动释放相机资源 */
+    this._exitHandler = () => this._forceCleanup();
+    process.once("SIGINT", this._exitHandler);
+    process.once("SIGTERM", this._exitHandler);
+    process.once("exit", this._exitHandler);
+  }
+
+  /** 同步强制释放（用于进程退出钩子，不可 await） */
+  _forceCleanup() {
+    if (!this._handle) return;
+    try {
+      if (this._grabbing) sdk.MV_CC_StopGrabbing(this._handle);
+    } catch { /* ignore */ }
+    try { sdk.MV_CC_CloseDevice(this._handle); } catch { /* ignore */ }
+    try { sdk.MV_CC_DestroyHandle(this._handle); } catch { /* ignore */ }
+    this._handle = null;
+    this._grabbing = false;
+    this._rawBuf = null;
+    this._jpegBuf = null;
   }
 
   /**
@@ -242,10 +262,19 @@ class HikGigECamera {
     );
 
     this._time("connect:OpenDevice");
-    assertMvOk(
-      sdk.MV_CC_OpenDevice(this._handle, C.MV_ACCESS_Exclusive, 0),
-      "MV_CC_OpenDevice",
-    );
+    try {
+      assertMvOk(
+        sdk.MV_CC_OpenDevice(this._handle, C.MV_ACCESS_Exclusive, 0),
+        "MV_CC_OpenDevice",
+      );
+    } catch (err) {
+      sdk.MV_CC_DestroyHandle(this._handle);
+      this._handle = null;
+      if (err.code === 0x80000203) {
+        err.message += " — 设备被占用，请确认上一次连接已 disconnect() 或重启相机";
+      }
+      throw err;
+    }
     this._log(
       `[HikCamera] connect: OpenDevice ... ${this._timeEnd("connect:OpenDevice").toFixed(0)}ms`,
     );
@@ -316,31 +345,10 @@ class HikGigECamera {
    * @returns {Promise<void>}
    */
   async disconnect() {
-    if (!this._handle) return;
-    try {
-      if (this._grabbing) {
-        try {
-          sdk.MV_CC_StopGrabbing(this._handle);
-        } catch {
-          /* ignore */
-        }
-        this._grabbing = false;
-      }
-      try {
-        sdk.MV_CC_CloseDevice(this._handle);
-      } catch {
-        /* ignore */
-      }
-    } finally {
-      try {
-        sdk.MV_CC_DestroyHandle(this._handle);
-      } catch {
-        /* ignore */
-      }
-      this._handle = null;
-      this._rawBuf = null;
-      this._jpegBuf = null;
-    }
+    this._forceCleanup();
+    process.removeListener("SIGINT", this._exitHandler);
+    process.removeListener("SIGTERM", this._exitHandler);
+    process.removeListener("exit", this._exitHandler);
   }
 
   /**

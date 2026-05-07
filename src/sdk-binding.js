@@ -204,11 +204,18 @@ const MV_FRAME_OUT_UNPARSED = koffi.union('MV_FRAME_OUT_UNPARSED', {
   nAligning: 'int64',
 });
 
-/** MvGvspPixelType — SDK uses int64 (verified empirically + Python wrapper). */
+/**
+ * MvGvspPixelType 在不同平台的 C ABI 不同：
+ *   macOS / Linux (Clang)  → int64  (编译器将 enum 提升为 64 位)
+ *   Windows (MSVC)         → int32  (enum 始终为 32 位)
+ * 类型不匹配会导致后续所有字段偏移错位，nFrameLen 恒读 0。
+ */
+const PIXEL_TYPE_FFI = process.platform === 'win32' ? 'int32' : 'int64';
+
 const MV_FRAME_OUT_INFO_EX = koffi.struct('MV_FRAME_OUT_INFO_EX', {
   nWidth: 'uint16',
   nHeight: 'uint16',
-  enPixelType: 'int64',
+  enPixelType: PIXEL_TYPE_FFI,
   nFrameNum: 'uint32',
   nDevTimeStampHigh: 'uint32',
   nDevTimeStampLow: 'uint32',
@@ -247,7 +254,7 @@ const MV_FRAME_OUT = koffi.struct('MV_FRAME_OUT', {
 const MV_SAVE_IMAGE_PARAM_EX = koffi.struct('MV_SAVE_IMAGE_PARAM_EX', {
   pData: 'void *',
   nDataLen: 'uint32',
-  enPixelType: 'int64',
+  enPixelType: PIXEL_TYPE_FFI,
   nWidth: 'uint16',
   nHeight: 'uint16',
   pImageBuffer: 'void *',

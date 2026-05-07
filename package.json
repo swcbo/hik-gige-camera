@@ -1,6 +1,6 @@
 {
   "name": "hik-gige-camera",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Node.js driver for Hikvision GigE industrial cameras via MVS SDK (koffi FFI binding)",
   "main": "src/index.js",
   "types": "src/index.d.ts",
